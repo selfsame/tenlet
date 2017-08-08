@@ -1,15 +1,15 @@
-(ns server.core
+(ns tenlet.server
   (import 
     [java.net ServerSocket Socket SocketException]
     [java.io InputStreamReader OutputStreamWriter BufferedWriter]
     [clojure.lang LineNumberingPushbackReader]
     [java.nio.charset Charset]))
 
-(def iso-latin-1 "The ISO Latin-1 charset object" (Charset/forName "ISO-8859-1"))
-(def utf-8 "The UTF-8 charset object" (Charset/forName "UTF-8"))
-(def ascii "The ASCII charset object" (Charset/forName "US-ASCII"))
+(def iso-latin-1  (Charset/forName "ISO-8859-1"))
+(def utf-8        (Charset/forName "UTF-8"))
+(def ascii        (Charset/forName "US-ASCII"))
 
-(def  T_IAC  "\u00ff" );255 "\377"
+(def  T_IAC  "\u00ff");255
 (def  T_WILL "\u00fb");251
 (def  T_WONT "\u00fc");252
 (def  T_DO   "\u00fd");253
@@ -31,7 +31,8 @@
 
 (def ansi-esc (String. (byte-array [27 (int \[)])))
 
-(send! (str ansi-esc 41 "m" "hello"))
+(defn cursor [x y] (str ansi-esc x ";" y "H"))
+
 
 (def OUT (atom nil))
 
@@ -42,7 +43,8 @@
   (let [ss (new ServerSocket port)]
     (on-thread #(when-not (. ss (isClosed))
                   (try (accept-socket (. ss (accept)))
-                       (catch SocketException e))
+                       (catch SocketException e
+                        (prn e)))
                   (recur))) ss))
 
 
@@ -53,48 +55,22 @@
             o (. s (getOutputStream))
             ir (new InputStreamReader i iso-latin-1)
             ow (new OutputStreamWriter o iso-latin-1)]
-    (reset! OUT ow)
-    (while (not (. s (isClosed)))
-      (let [c (char (.read ir))]
-        (prn c)))))))
+        ::client-connect
+        (reset! OUT ow)
+        (#(when-not (. s (isClosed))
+          (try 
+            (let [c (char (.read ir))]
+              ::client-input
+              (prn c))
+            (catch java.lang.IllegalArgumentException e
+              ::client-close
+              (.close s)))
+          (recur)))))))
 
-(def server (create-server new-connection 5073))
-
-'(. server (close))
 
 (defn send! [& s]
   (.write @OUT (apply str s)) 
   (.flush @OUT))
 
 
-(send! (String. (byte-array [255 253 34 255 250 34 1 0 255 240 255 251 1]), iso-latin-1))
-
-(send! (String. (byte-array [255 252 1]), iso-latin-1))
-(send! (String. (byte-array [255 251 1]), iso-latin-1))
-
-(send! (str T_IAC T_WONT T_ECHO))
-(send! (str T_IAC T_WILL T_ECHO))
-(send! T_IAC T_DO T_LINE)
-(send! T_IAC T_DONT T_LINE)
-(send! ansi-esc T_ORIG )
-
-(send! T_IAC T_DO T_NAWS)
-
-(defn cursor [x y]
-  (str ansi-esc x ";" y "H"))
-
-(send! T_CLR)
-(for [i (range 20)]
-  (do 
-    (send! (cursor i i))
-    (send! "@")))
-
-(send! ansi-esc "40;40H")
-
-(str T_NAWS)
-
-(int \ú)
-
-(int \ð)
-
-(str T_IAC)
+(def server (create-server new-connection 5073))
