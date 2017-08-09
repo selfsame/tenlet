@@ -1,33 +1,64 @@
 (ns tenlet.scratch
   (:use tenlet.server))
 
-'(. server (close))
+(def players (atom {}))
+
+(defn broad! [& args]
+  (let [s (apply str args)]
+    (dorun (map #(write % s) (keys @players)))))
+
+
+
+(defn new-player [c]
+  (swap! players assoc c {})
+  (write c :welcome!))
+
+(defn player-input [c i]
+  (prn i))
+
+(defn player-quit [c]
+  (swap! players dissoc c)
+  (broad! :dissconect c))
+
+(def server 
+  (create-server 5073 {
+    :connect #'new-player
+    :input   #'player-input
+    :close   #'player-quit
+    :shutdown #(prn :shutdown! %)}))
+
+(defn shutdown! []
+  (broad! "SERVER SHUTTING DOWN")
+  (dorun (map #(close %) (keys @players)))
+  (.close server))
+
+'(shutdown!)
 
 ;echo
-(send! T_IAC T_WONT T_ECHO)
+(broad! T_IAC T_WONT T_ECHO)
 ;no echo
-(send! T_IAC T_WILL T_ECHO)
+(broad! T_IAC T_WILL T_ECHO)
 
 ;enter char mode
-(send! T_IAC T_DO T_LINE)
+(broad! T_IAC T_DO T_LINE)
 
 
-(send! T_IAC T_DONT T_LINE)
+(broad! T_IAC T_DONT T_LINE)
 
 ;not sure
-(send! ansi-esc T_ORIG )
+(broad! ansi-esc T_ORIG )
 
 ;request screen size reports
-(send! T_IAC T_DO T_NAWS)
+(broad! T_IAC T_DO T_NAWS)
 
 ;clear screen
-(send! T_CLR)
+(broad! T_CLR)
 
 ;hide cursor
-(send! T_CSI T_HIDE)
+(broad! T_CSI T_HIDE)
 
 
 (for [i (range 20)]
   (do 
-    (send! (cursor i i))
-    (send! "@")))
+    (broad! (cursor i i))
+    (broad! "@")))

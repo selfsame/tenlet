@@ -1,5 +1,16 @@
 # tenlet - a clojure telnet library
 
+```clj
+(use 'tenlet.server)
+
+(def server 
+  (create-server 5073 {
+    :connect  (fn [client])
+    :input    (fn [client chr])
+    :close    (fn [client])
+    :shutdown (fn [server])}))
+```
+
 ### wishlist
 
 * cross platform (clj/cljr/cljs) socket server
