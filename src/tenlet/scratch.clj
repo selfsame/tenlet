@@ -7,8 +7,6 @@
   (let [s (apply str args)]
     (dorun (map #(write % s) (keys @players)))))
 
-
-
 (defn new-player [c]
   (swap! players assoc c {})
   (write c :welcome!))
@@ -28,34 +26,34 @@
     :shutdown #(prn :shutdown! %)}))
 
 (defn shutdown! []
-  (broad! "SERVER SHUTTING DOWN")
+  (broad! "\nSERVER SHUTTING DOWN\n")
   (dorun (map #(close %) (keys @players)))
   (.close server))
 
 '(shutdown!)
 
 ;echo
-(broad! T_IAC T_WONT T_ECHO)
+(broad! IAC WONT ECHO)
 ;no echo
-(broad! T_IAC T_WILL T_ECHO)
+(broad! IAC WILL ECHO)
 
 ;enter char mode
-(broad! T_IAC T_DO T_LINE)
+(broad! IAC DO LINE)
 
 
-(broad! T_IAC T_DONT T_LINE)
+(broad! IAC DONT LINE)
 
 ;not sure
-(broad! ansi-esc T_ORIG )
+(broad! ansi-esc ORIG )
 
 ;request screen size reports
-(broad! T_IAC T_DO T_NAWS)
+(broad! IAC DO NAWS)
 
 ;clear screen
-(broad! T_CLR)
+(broad! CLR)
 
 ;hide cursor
-(broad! T_CSI T_HIDE)
+(broad! CSI HIDE)
 
 
 (for [i (range 20)]
