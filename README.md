@@ -7,7 +7,7 @@
 (def server 
   (create-server 5073 {
     :connect  (fn [client])
-	:line     (fn [client string])
+    :line     (fn [client string])
     :input    (fn [client char-or-keyword])
     :resize   (fn [client {:keys [w h]}])
     :close    (fn [client])
