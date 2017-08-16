@@ -1,35 +1,20 @@
 (ns tenlet.server
+  (:use 
+    tenlet.escape)
+  (:require
+    [tenlet.decode :as decode])
   (import 
     [java.net ServerSocket Socket SocketException]
     [java.io InputStreamReader OutputStreamWriter BufferedWriter]
     [java.nio.charset Charset]))
 
+(def DEBUG (atom false))
+
+(defn debug [& args]
+  (if @DEBUG (apply prn args)))
+
+
 (def iso-latin-1  (Charset/forName "ISO-8859-1"))
-
-(def  IAC  "\u00ff") ;255
-(def  WILL "\u00fb") ;251
-(def  WONT "\u00fc") ;252
-(def  DO   "\u00fd") ;253
-(def  DONT "\u00fe") ;254
-(def  SE   "\u00f0") ;240
-(def  SB   "\u00fa") ;250
-
-(def  CRLF "\r\n")
-
-(def  ECHO "\u0001") ;  1
-(def  LINE "\u0022") ; 34
-(def  NAWS "\u001f") ; 31
-
-(def  CSI  "\u001b[")
-(def  CLR  "\033[2J")
-(def  ORIG "1;1H")
-(def  HIDE "?25l")   ; tput civis [man terminfo]
-(def  SHOW "?25h")   ; tput cnorm [man terminfo]
-
-(def ansi-esc (String. (byte-array [27 (int \[)])))
-
-(defn cursor [x y] (str ansi-esc x ";" y "H"))
-
 
 (defn- on-thread [f] (doto (new Thread f) (.start)))
 
@@ -41,6 +26,7 @@
   (connect [o])
   (write [o s])
   (input [o c])
+  (line [o s])
   (close [o]))
 
 (deftype Client [socket ir ow opts]
@@ -49,7 +35,24 @@
   (write [o s]
     (.write ow (str s)) 
     (.flush ow))
-  (input [o c] (call @opts :input o c))
+  (input [o c] 
+    (debug [c (int c)])
+    (let [code (decode/op (or (::code @opts) {}) c)
+          out (:out code)
+          -line (:line code)
+          resize (:resize code)]
+      (debug :code code)
+      (when resize 
+        (call @opts :resize o resize))
+      (when out
+        (call @opts :input o out)
+        (swap! opts assoc ::code (dissoc code :out)))
+      (when -line
+        (line o -line)
+        (swap! opts assoc ::code {}))
+      (if-not (or out -line)
+        (swap! opts assoc ::code code))))
+  (line [o s] (call @opts :line o s))
   (close [o] 
     (call @opts :close o)
     (.close socket)))
