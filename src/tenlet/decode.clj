@@ -53,9 +53,8 @@
     (assoc :out c) 
     (assoc :line (apply str (:chars col))) ))
 
-(pdfn op [^empty? col ^ESC? c]
-  {:esc true
-   :chars []})
+(pdfn op [col ^ESC? c]
+  (assoc col :esc true))
 
 (pdfn op [^:iac col c]
   (update col :chars conj c))
@@ -104,12 +103,17 @@
       \H :home
       \E :numpad-5
       nil)]
-    {:out found}
-    (update col :chars conj c)))
+    (-> col 
+      (dissoc :esc)
+      (dissoc :code)
+      (assoc :out found))
+    (-> col
+      (update :codes vec)
+      (update :codes conj c))))
 
 (pdfn op [^:code col ^TILDE? c]
   (if-let [found 
-    (case (:chars col)
+    (case (:codes col)
       [\2] :insert
       [\3] :delete
       [\5] :pageup
@@ -123,8 +127,15 @@
       [\2 \3] :f11
       [\2 \4] :f12
       nil)]
-    {:out found}
-    {}))
+    (-> col 
+      (dissoc :esc)
+      (dissoc :code)
+      (dissoc :codes)
+      (assoc :out found))
+    (-> col 
+      (dissoc :esc)
+      (dissoc :code)
+      (dissoc :codes))))
 
 (inspect op)
 
