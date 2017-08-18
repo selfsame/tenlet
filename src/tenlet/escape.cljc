@@ -22,7 +22,7 @@
 (def  HIDE "?25l")   ; tput civis [man terminfo]
 (def  SHOW "?25h")   ; tput cnorm [man terminfo]
 
-(def ansi-esc (String. (byte-array [27 (int \[)])))
+(def ansi-esc (str (char 27) \[ ))
 
 (defn escape [n] 
   (let [n (if (sequential? n) (clojure.string/join ";" n) n)] 

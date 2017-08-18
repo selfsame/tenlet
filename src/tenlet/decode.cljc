@@ -1,11 +1,14 @@
 (ns tenlet.decode
-  (:use 
-    pdfn.core)
   (:require
+    #?(:clj [pdfn.core :refer :all]
+       :cljs [pdfn.core :refer [and* or* not* is*] :refer-macros [defpdfn pdfn compile! inspect]])
     [clojure.pprint :as pprint]))
 
 ;http://www.asciitable.com/
 
+(defn chint [c] 
+  #?(:clj (int c)
+     :cljs (.charCodeAt c)))
 
 (def ETX        (char 3))
 (def EOT        (char 4))
@@ -33,7 +36,7 @@
 (def TILDE?   (is* \~ ))
 (def IAC-END? #{\ð})
 (def IGNORED? #{})
-(def DISPLAY? #(> (int %) 31))
+(def DISPLAY? #(> (chint %) 31))
 (def RETURN?  (is* \return))
 
 (defpdfn ^{:inline true} op)
@@ -81,7 +84,7 @@
   (let [col (update col :chars conj c)
         chars (:chars col)]
     (if (= 6 (count chars))
-      (let [[w1 w2 h1 h2 iac se] (mapv int chars)
+      (let [[w1 w2 h1 h2 iac se] (mapv chint chars)
             w (+ (bit-shift-left w1 8) w2)
             h (+ (bit-shift-left h1 8) h2)]
         (if (and (IAC? (char iac)) (SE? (char se)))
@@ -137,5 +140,4 @@
       (dissoc :code)
       (dissoc :codes))))
 
-(inspect op)
-
+'(inspect op)

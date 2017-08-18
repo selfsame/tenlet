@@ -1,7 +1,7 @@
 (ns tenlet.scratch
-  (:use 
-    tenlet.server
-    tenlet.escape))
+  (:require 
+    [tenlet.server :refer [write close create-server]]
+    [tenlet.escape :as esc]))
 
 (def players (atom {}))
 
@@ -11,8 +11,9 @@
 
 (defn new-player [c]
   (swap! players assoc c {})
-  (write c (str IAC DO NAWS))
-  ;(write c (str IAC DO LINE))
+  (prn [:new c])
+  (write c (str esc/IAC esc/DO esc/NAWS))
+  (write c (str esc/IAC esc/DO esc/LINE))
   )
 
 (defn player-input [c s] (prn s))
@@ -23,24 +24,22 @@
 
 (defn player-resize [c m]
   (let [{:keys [w h]} m]
-    (write c CLR)
+    (write c esc/CLR)
     (dorun 
       (for [x (range (inc w))
             y (range (inc h))
             :when (or (#{2 (dec w)} x) (#{2 (dec h)} y))]
       (do 
-        (write c (cursor x y))
+        (write c (esc/cursor x y))
         (write c (str 
-          (background (rand-nth (vec color-names))) 
-          (code (rand-nth (vec color-names)))))
+          (esc/background (rand-nth (vec esc/color-names))) 
+          (esc/code (rand-nth (vec esc/color-names)))))
         (write c (char (+ 33 (rand-int 93)))))))
-    (write c (cursor (int (/ w 2)) (int (/ h 2))))
-    (write c (str (code :red) m (code :reset))))
-
-  )
+    (write c (esc/cursor (int (/ w 2)) (int (/ h 2))))
+    (write c (str (esc/code :red) m (esc/code :reset)))))
 
 (def server 
-  (create-server 5073 {
+  (create-server 5071 {
     :connect  #'new-player
     :line     #'player-input
     :input    #'player-input
@@ -50,9 +49,9 @@
 
 (defn shutdown! []
   (broad! 
-    (background :white) (code :red)
+    (esc/background :white) (esc/code :red)
     "\nSERVER SHUTTING DOWN\n"
-    (code :reset))
+    (esc/code :reset))
   (dorun (map #(close %) (keys @players)))
   (.close server))
 
@@ -60,9 +59,9 @@
 
 (for [i (range 20)] 
   (broad! 
-    (background (rand-nth (vec color-names))) 
-    (code (rand-nth (vec color-names)))
-    'selfsame (code :reset)))
+    (esc/background (rand-nth (vec esc/color-names))) 
+    (esc/code (rand-nth (vec esc/color-names)))
+    'selfsame (esc/code :reset)))
 
 '(for [i (range 20)]
   (do 

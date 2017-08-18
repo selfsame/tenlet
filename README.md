@@ -1,5 +1,7 @@
 # tenlet - a clojure telnet library
 
+`[selfsame/tenlet "0.2"]`
+
 
 ```clj
 (use 'tenlet.server)
@@ -26,7 +28,10 @@ The `:line` handler recieves typical newline delimited input from the client.  `
 
 ### wishlist
 
-- [ ] cross platform (clj/cljr/cljs) socket server
+- [ ] cross platform
+  - [x] `:clj`
+  - [x] `:cljs`
+  - [ ] `:cljc`
 - [x] user handlers for server & client lifecycles
 - [ ] Telnet protocol code defs
 - [x] NAWS terminal size reporting

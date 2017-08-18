@@ -1,0 +1,11 @@
+{:source-paths [
+  "/home/selfsame/dev/tenlet/test"
+"/home/selfsame/dev/tenlet/src"
+"/home/selfsame/dev/tenlet/dev-resources"
+"/home/selfsame/dev/tenlet/resources"
+"/home/selfsame/dev/tenlet/target/classes"
+"/home/selfsame/.m2/repository/org/clojure/clojure/1.8.0/clojure-1.8.0.jar"
+"/home/selfsame/.m2/repository/selfsame/pdfn/1.0.2/pdfn-1.0.2.jar"
+"/home/selfsame/.m2/repository/org/clojure/tools.nrepl/0.2.12/tools.nrepl-0.2.12.jar"
+"/home/selfsame/.m2/repository/clojure-complete/clojure-complete/0.2.4/clojure-complete-0.2.4.jar"
+]}
