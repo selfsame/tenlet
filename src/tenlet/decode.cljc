@@ -18,6 +18,7 @@
 (def BEL        (char 7))
 (def FS         (char 28))
 (def BACKSPACE  (char 8))
+(def TAB        (char 9))
 (def SYN        (char 22))
 (def DC1        (char 17))
 (def DLE        (char 16))
@@ -29,6 +30,7 @@
 (def IAC?     (is* \ÿ))
 (def ESC?     (is* (char 27)))
 (def NULL?    (is* (char 0)))
+(def ETX?     (is* (char 3)))
 (def NAWS?    (is* (char 31)))
 (def SB?      (is* (char 250)))
 (def SE?      (is* (char 240)))
@@ -71,7 +73,7 @@
    :chars []})
 
 (pdfn op [^:iac col ^IAC-END? c]
-  {:out (conj (:chars col) c)})
+  {})
 
 (pdfn op [col ^IAC? c]
   {:iac true
@@ -94,6 +96,16 @@
 
 (pdfn op [^:esc col ^LB? c]
   (assoc col :code true))
+
+(pdfn op [col c]
+  {c #{ETX TAB BEL ETB}}
+  (assoc col :ignore 1))
+
+(pdfn op [^:ignore col c]
+  (let [n (dec (:ignore col))]
+    (if (pos? n)
+      (assoc col :ignore n)
+      (dissoc col :ignore))))
 
 (pdfn op [^:code col c]
   (if-let [found 

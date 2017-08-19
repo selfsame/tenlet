@@ -12,9 +12,11 @@
 (defn new-player [c]
   (swap! players assoc c {})
   (prn [:new c])
+  (prn (type (.-socket c)))
   (write c (str esc/IAC esc/DO esc/NAWS))
   (write c (str esc/IAC esc/DO esc/LINE))
   )
+
 
 (defn player-input [c s] (prn s))
 

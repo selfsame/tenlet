@@ -10,5 +10,8 @@
 
 
 '[::protocols]
-'([ ] NAWS
+'([x] NAWS
   ([ ] IAC routing))
+
+'[::bugs]
+'([ ] some IAC chars are making it to input)

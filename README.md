@@ -32,8 +32,10 @@ The `:line` handler recieves typical newline delimited input from the client.  `
   - [x] `:clj`
   - [x] `:cljs`
   - [ ] `:cljc`
+- [ ] `tenlet.server.Server` class with `close` protocol
+  - [ ] track clients and clean them up on close
 - [x] user handlers for server & client lifecycles
-- [ ] Telnet protocol code defs
+- [x] Telnet protocol code defs
 - [x] NAWS terminal size reporting
 - [ ] helpers for line/char, echo, cursor modes
 - [x] string formatting & escape code decorating namespace

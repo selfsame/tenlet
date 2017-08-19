@@ -6,7 +6,7 @@
             [java.io InputStreamReader OutputStreamWriter BufferedWriter]
             [java.nio.charset Charset])))
 
-(def DEBUG (atom false))
+(def DEBUG (atom true))
 
 (defn debug [& args]
   (if @DEBUG (apply prn args)))
@@ -49,19 +49,21 @@
           resize (:resize code)]
       (debug :code code)
       (when resize 
-        (call @opts :resize o resize))
+        (call @opts :resize o resize)
+        (swap! opts assoc ::code {}))
       (when out
         (call @opts :input o out)
         (swap! opts assoc ::code (dissoc code :out)))
       (when -line
         (line o -line)
         (swap! opts assoc ::code {}))
-      (if-not (or out -line)
+      (if-not (or out -line resize)
         (swap! opts assoc ::code code))))
   (line [o s] (call @opts :line o s))
   (close [o] 
     (call @opts :close o)
-    (.close socket)))
+    #?(:clj  (.close socket)
+       :cljs (.destroy socket))))
 
 (defn- new-connection [c opts] 
  #?(:clj 
