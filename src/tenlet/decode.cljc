@@ -26,6 +26,7 @@
 (def NAK        (char 21))
 (def ETB        (char 23))
 (def VT         (char 11))
+(def LB         (char 91))
 
 (def IAC?     (is* \ÿ))
 (def ESC?     (is* (char 27)))
@@ -62,39 +63,46 @@
   (assoc col :esc true))
 
 (pdfn op [^:iac col c]
-  (update col :chars conj c))
+  (update col :codes conj c))
 
 (pdfn op [^:iac col ^SB? c]
   (-> col
     (assoc :sb true)))
 
 (pdfn op [^:sb col ^NAWS? c]
-  {:naws true 
-   :chars []})
+  (-> col
+    (assoc :naws true)
+    (assoc :codes [])))
 
 (pdfn op [^:iac col ^IAC-END? c]
   {})
 
 (pdfn op [col ^IAC? c]
-  {:iac true
-   :chars []})
+  (-> col
+    (assoc :iac true)
+    (assoc :codes [])))
 
 (pdfn op [col ^NULL? c]
   {})
 
 (pdfn op [^:naws col c]
-  (let [col (update col :chars conj c)
-        chars (:chars col)]
+  (let [col (update col :codes conj c)
+        chars (:codes col)]
     (if (= 6 (count chars))
       (let [[w1 w2 h1 h2 iac se] (mapv chint chars)
             w (+ (bit-shift-left w1 8) w2)
             h (+ (bit-shift-left h1 8) h2)]
         (if (and (IAC? (char iac)) (SE? (char se)))
-          {:resize {:w w :h h}}
-          {:error "Could not negotiate NAWS"}))
+          (-> col 
+            (select-keys [:chars])
+            (assoc :resize {:w w :h h}))
+          (-> col 
+            (select-keys [:chars])
+            (assoc :error "Could not negotiate NAWS"))))
       col)))
 
 (pdfn op [^:esc col ^LB? c]
+  {c #{LB \O}}
   (assoc col :code true))
 
 (pdfn op [col c]
@@ -117,6 +125,10 @@
       \F :end
       \H :home
       \E :numpad-5
+      \P :f1
+      \Q :f2
+      \R :f3
+      \S :f4
       nil)]
     (-> col 
       (dissoc :esc)

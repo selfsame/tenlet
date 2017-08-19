@@ -6,7 +6,7 @@
             [java.io InputStreamReader OutputStreamWriter BufferedWriter]
             [java.nio.charset Charset])))
 
-(def DEBUG (atom true))
+(def DEBUG (atom false))
 
 (defn debug [& args]
   (if @DEBUG (apply prn args)))
@@ -50,7 +50,7 @@
       (debug :code code)
       (when resize 
         (call @opts :resize o resize)
-        (swap! opts assoc ::code {}))
+        (swap! opts assoc ::code (dissoc code :resize)))
       (when out
         (call @opts :input o out)
         (swap! opts assoc ::code (dissoc code :out)))
