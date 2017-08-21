@@ -1,6 +1,6 @@
 (ns tenlet.scratch
   (:require 
-    [tenlet.server :refer [write close create-server]]
+    [tenlet.server :refer [write close create-server DEBUG]]
     [tenlet.escape :as esc]))
 
 (def players (atom {}))
@@ -22,7 +22,8 @@
 
 (defn player-quit [c]
   (swap! players dissoc c)
-  (broad! :dissconect c))
+  (prn :disconnect c)
+  (broad! "\n" :disconnect " " c "\n"))
 
 (defn player-resize [c m]
   (let [{:keys [w h]} m]
@@ -40,6 +41,17 @@
     (write c (esc/cursor (int (/ w 2)) (int (/ h 2))))
     (write c (str (esc/code :red) m (esc/code :reset)))))
 
+(declare server)
+
+(defn shutdown! []
+  (write server (str  
+    (esc/background :white) (esc/code :red)
+    "\nSERVER SHUTTING DOWN\n"
+    (esc/code :reset)))
+  (close server))
+
+(if server (shutdown!))
+
 (def server 
   (create-server 5071 {
     :connect  #'new-player
@@ -49,15 +61,9 @@
     :shutdown #(prn :shutdown! %)
     :resize   #'player-resize}))
 
-(defn shutdown! []
-  (broad! 
-    (esc/background :white) (esc/code :red)
-    "\nSERVER SHUTTING DOWN\n"
-    (esc/code :reset))
-  (dorun (map #(close %) (keys @players)))
-  (.close server))
 
-'(shutdown!)
+
+
 
 (for [i (range 20)] 
   (broad! 
@@ -72,18 +78,21 @@
     (broad! "@")))
 
 
-
+'(swap! DEBUG not)
 
 ;echo
-'(broad! IAC WONT ECHO)
+'(broad! esc/IAC esc/WONT esc/ECHO)
 ;no echo
-'(broad! IAC WILL ECHO)
+'(broad! esc/IAC esc/WILL esc/ECHO)
 
 ;enter char mode
-'(broad! IAC DO LINE)
+'(broad! esc/char-mode)
+
+;enter line mode
+'(broad! esc/line-mode)
 
 
-'(broad! IAC DONT LINE)
+'(broad! esc/IAC esc/DONT esc/LINE)
 
 ;not sure
 '(broad! ansi-esc ORIG )

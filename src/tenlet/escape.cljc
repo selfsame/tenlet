@@ -63,3 +63,11 @@
 (defn blink [& args]
   (str (escape 5) (apply str args) (escape 25)))
 
+(def echo       (str IAC WONT ECHO))
+(def no-echo    (str IAC WILL ECHO))
+
+(defn- -line-mode [mode]
+  (str IAC DO LINE IAC SB LINE (char 1) (char mode) IAC SE))
+
+(def char-mode (-line-mode 0))
+(def line-mode (-line-mode 1))

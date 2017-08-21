@@ -25,22 +25,37 @@
   (if-let [f (get opts k)]
     (apply f args)))
 
-(defprotocol IClient
-  (connect [o])
+(defprotocol ITelnet
+  (connect [o] [o c])
   (write [o s])
   (input [o c])
   (line [o s])
   (close [o]))
 
+(deftype Server [socket opts]
+  ITelnet
+  (connect [o c]
+    (swap! opts update :clients conj c))
+  (write [o s] 
+    (dorun (map #(write % s) (:clients @opts))))
+  (close [o]
+    (dorun (map close (:clients @opts)))
+    (.close socket)))
+
 (deftype Client [socket ow opts]
-  IClient
+  ITelnet
   (connect [o] (call @opts :connect o))
 #?(:clj 
   (write [o s]
-    (.write ow (str s)) 
-    (.flush ow))
+    (try 
+      (.write ow (str s)) 
+      (.flush ow)
+      (catch Exception e)))
   :cljs
-  (write [o s] (.write socket (str s) "latin1")))
+  (write [o s] 
+    (try 
+      (.write socket (str s) "latin1")
+      (catch :default e))))
   (input [o c] 
     (debug [c (int c)])
     (let [code (decode/op (or (::code @opts) {}) c)
@@ -61,11 +76,19 @@
         (swap! opts assoc ::code code))))
   (line [o s] (call @opts :line o s))
   (close [o] 
-    (call @opts :close o)
-    #?(:clj  (.close socket)
-       :cljs (.destroy socket))))
+    (swap! (.-opts (::server @opts)) update :clients 
+      #(-> % set (disj o) seq))
+    #?(:clj  
+        (try 
+          (.close socket)
+          (call @opts :close o)
+          (catch Exception e))
+       :cljs 
+        (try 
+          (.destroy socket)
+          (catch :default e)))))
 
-(defn- new-connection [c opts] 
+(defn- new-connection [S c opts]
  #?(:clj 
     (on-thread 
       (fn [] 
@@ -73,33 +96,48 @@
               o (. c (getOutputStream))
               ir (new InputStreamReader i iso-latin-1)
               ow (new OutputStreamWriter o iso-latin-1)
-              client (Client. c ow (atom opts))]
-          (connect client)
+              C (Client. c ow (atom opts))]
+          (connect S C)
+          (connect C)
           ((fn [] 
             (when-not (.isClosed c)
               (try 
-                (input client (char (.read ir)))
+                (input C (char (.read ir)))
                 (catch java.lang.IllegalArgumentException e
-                  (close client))
+                  (close C))
                 (catch java.net.SocketException e))
               (recur)))))))
     :cljs
-    (let [client (Client. c nil (atom opts))]
+    (let [C (Client. c nil (atom opts))]
       (.setEncoding c "latin1")
-      (connect client)
-      (.on c "data" (fn [d] (dorun (map #(input client %) (str d))))))))
+      (connect S C)
+      (connect C)
+      (.on c "data" (fn [d] (dorun (map #(input C %) (str d)))))
+      (.on c "close" 
+        (fn [e] 
+          (close C)
+          (call @(.-opts C) :close C))))))
 
 (defn create-server [port opts]
  #?(:clj 
-    (let [s (new ServerSocket port)]
+    (let [s (new ServerSocket port)
+          S (Server. s (atom {}))
+          opts (assoc opts ::server S)]
       (on-thread 
         (fn [] 
           (when-not (.isClosed s)
-            (try (new-connection (.accept s) opts)
-                 (catch SocketException e
-                   (call opts :shutdown s)))
-            (recur)))) s)
+            (try 
+              (let [c (.accept s)]
+                (new-connection S c opts))
+              (catch SocketException e
+                (call opts :shutdown S)))
+            (recur)))) S)
     :cljs
-    (let [s ((.-createServer net)
-      (fn [c] (new-connection c opts)))]
-      (.listen s port) s)))
+    (let [s ((.-createServer net))
+          S (Server. s (atom {}))
+          opts (assoc opts ::server S)]
+      (.listen s port) 
+      (.on s "connection" (fn [c] 
+        (new-connection S c opts)))
+      (.on s "close" 
+        (fn [e] (call opts :shutdown S))) S)))

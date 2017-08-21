@@ -10,6 +10,7 @@
   #?(:clj (int c)
      :cljs (.charCodeAt c)))
 
+(def SOH        (char 1))
 (def ETX        (char 3))
 (def EOT        (char 4))
 (def STX        (char 2))
@@ -74,7 +75,8 @@
     (assoc :naws true)
     (assoc :codes [])))
 
-(pdfn op [^:iac col ^IAC-END? c]
+(pdfn op [^:iac col c]
+  {c #{SOH \ð}}
   {})
 
 (pdfn op [col ^IAC? c]
