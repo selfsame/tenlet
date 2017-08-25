@@ -7,6 +7,8 @@
 '([x] server should track client connections
   ([x] closing the server should close all connections)
   ([x] client socket closure should trigger handler))
+'([ ] configurable max terminal dimensions)
+
 
 '[::client]
 
