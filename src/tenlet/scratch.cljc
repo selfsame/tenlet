@@ -140,7 +140,7 @@
 (if server (shutdown!))
 
 (def server 
-  (create-server 5071 {
+  (create-server 5072 {
     :connect  #'new-player
     :line     #'player-input
     :input    #'player-input

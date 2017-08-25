@@ -1,0 +1,1 @@
+nohup lumo -c ./src ./src/tenlet/scratch.cljc &
