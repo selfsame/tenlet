@@ -5,20 +5,66 @@
 
 (def players (atom {}))
 
+(defonce world (atom {
+  [5 5] {:color :red :char "$"}}))
+
 (defn broad! [& args]
   (let [s (apply str args)]
     (dorun (map #(write % s) (keys @players)))))
 
+(defn state 
+  ([c] (get @players c))
+  ([c k] (get-in @players [c k])))
+
+(defn set-state! [c k v]
+  (swap! players update c assoc k v))
+
+(defn update-state! [c k f]
+  (swap! players update c update k f))
+
+(defn cursor! [c x y]
+  (write c (esc/cursor x y)))
+
+
+(defn draw-world [c]
+  (let [{:keys [w h]} (state c :window)
+        [x y] (state c :pos)
+        [ox oy] (mapv int (mapv * [w h] [0.5 0.5]))]
+    (write c esc/CLR)
+    (cursor! c ox oy)
+    (write c "@")
+    (dorun 
+      (for [xx (range w)
+            yy (range h)
+            :let [tile (get @world [xx yy])]
+            :when tile]
+      (do 
+        (cursor! c xx yy)
+        (write c (:char tile)))
+
+      ))))
+
 (defn new-player [c]
-  (swap! players assoc c {})
-  (prn [:new c])
-  (prn (type (.-socket c)))
-  (write c (str esc/IAC esc/DO esc/NAWS))
-  (write c (str esc/IAC esc/DO esc/LINE))
-  )
+  (swap! players assoc c {
+    :pos [0 0]
+    :window {:w 10 :h 10}})
+  (write c esc/naws)
+  (write c esc/char-mode)
+  (write c esc/no-echo)
+  (write c esc/CLR)
+  (draw-world c))
 
 
-(defn player-input [c s] (prn s))
+(def move-map {
+  :arrow-left   [-1 0]
+  :arrow-right  [1 0]
+  :arrow-up     [0 1]
+  :arrow-down   [0 -1]})
+
+(defn player-input [c s] (prn s)
+  (if-let [delta (move-map s)]
+
+    ))
 
 (defn player-quit [c]
   (swap! players dissoc c)
@@ -27,19 +73,8 @@
 
 (defn player-resize [c m]
   (let [{:keys [w h]} m]
-    (write c esc/CLR)
-    (dorun 
-      (for [x (range (inc w))
-            y (range (inc h))
-            :when (or (#{2 (dec w)} x) (#{2 (dec h)} y))]
-      (do 
-        (write c (esc/cursor x y))
-        (write c (str 
-          (esc/background (rand-nth (vec esc/color-names))) 
-          (esc/code (rand-nth (vec esc/color-names)))))
-        (write c (char (+ 33 (rand-int 93)))))))
-    (write c (esc/cursor (int (/ w 2)) (int (/ h 2))))
-    (write c (str (esc/code :red) m (esc/code :reset)))))
+    (set-state! c :window m)
+    (draw-world c)))
 
 (declare server)
 
@@ -64,18 +99,6 @@
 
 
 
-
-(for [i (range 20)] 
-  (broad! 
-    (esc/background (rand-nth (vec esc/color-names))) 
-    (esc/code (rand-nth (vec esc/color-names)))
-    'selfsame (esc/code :reset)))
-
-'(for [i (range 20)]
-  (do 
-    (broad! (cursor i i))
-    (broad! (code (rand-nth (vec color-names))))
-    (broad! "@")))
 
 
 '(swap! DEBUG not)
