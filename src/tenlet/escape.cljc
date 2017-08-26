@@ -74,3 +74,4 @@
 (def naws (str IAC DO NAWS))
 
 (def hide-cursor (str CSI HIDE))
+(def show-cursor (str CSI SHOW))
