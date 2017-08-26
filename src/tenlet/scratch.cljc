@@ -163,6 +163,7 @@
     (= s :pageup)   (change-color c :color 1)
     (= s :pagedown) (change-color c :background 1)
     (= s :f1)       (do (write c esc/show-cursor)
+                        (write c esc/CLR)
                         (close c)))
   (when-not (keyword? s)
     (swap! world assoc (state c :pos) {
