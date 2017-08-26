@@ -72,3 +72,5 @@
 (def char-mode (-line-mode 0))
 (def line-mode (-line-mode 1))
 (def naws (str IAC DO NAWS))
+
+(def hide-cursor (str CSI HIDE))

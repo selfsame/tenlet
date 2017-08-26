@@ -26,3 +26,6 @@
 [\ÿ 255]
 [\ý 253]
 [\ 3]
+
+'([ ] test inputs in putty :pageup :pagedown)
+'([ ] (if server (shutdown!)) causing error first time (JVM))

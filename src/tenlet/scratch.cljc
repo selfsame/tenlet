@@ -1,12 +1,29 @@
 (ns tenlet.scratch
   (:require 
     [tenlet.server :refer [write close create-server DEBUG]]
-    [tenlet.escape :as esc :refer [code background color-names]]))
+    [tenlet.escape :as esc :refer [code background color-names]]
+  #?(:cljs [cljs.nodejs :as nodejs])))
+
+#?(:cljs (def fs (nodejs/require "fs")))
+#?(:cljs (defn spit [f s] (fs.writeFileSync f (str s))))
+#?(:cljs (defn slurp [f] (.toString (fs.readFileSync f))))
 
 (def players (atom {}))
 
-(defonce world (atom {
-  [5 5] {:color :red :char "$"}}))
+(defn load-world []
+#?(:clj  
+  (try 
+    (read-string (slurp "world.edn"))
+    (catch Exception e {}))
+ :cljs 
+  (try 
+    (cljs.reader/read-string (slurp "world.edn"))
+    (catch :default e {}))))
+
+(defonce world (atom (load-world)))
+
+(defn save-world []
+  (spit "world.edn" @world))
 
 (defn broad! [& args]
   (let [s (apply str args)]
@@ -28,48 +45,82 @@
 (defn write! [c & more]
   (write c (apply str more)))
 
+(defn write* [c & more]
+  (update-state! c ::write #(apply str (cons % more))))
+
+(defn flush* [c]
+  (write c (state c ::write))
+  (set-state! c ::write ""))
+
+(defn within? [c x y]
+  (let [[px py] (state c :pos)
+        {:keys [w h]} (state c :window)
+        ox (int (* w 0.5))
+        oy (int (* h 0.5))]
+    (if (and (< (- px ox) x (+ px ox))
+             (< (- py oy) y (+ py oy)))
+        true)))
+
+(defn each-player [f]
+  (dorun (map
+    (fn [[c m]] (f c))
+   @players)))
+
+(defn screen-space [c x2 y2]
+  (let [{:keys [w h]} (state c :window)
+        [x y] (state c :pos)
+        ox (int (* w 0.5))
+        oy (int (* h 0.5))]
+    [(+ (- x2 x) ox)
+     (+ (- y2 y) oy)]))
+
 (defn draw-world [c]
   (let [{:keys [w h]} (state c :window)
         [x y] (state c :pos)
-        [ox oy] (mapv int (mapv * [w h] [0.5 0.5]))]
-    (write c esc/CLR)
-    (cursor! c ox oy)
-    (write c "@")
+        ox (int (* w 0.5))
+        oy (int (* h 0.5))
+        world @world]
+    (write* c esc/CLR)
     (dorun 
       (for [xx (range w)
             yy (range h)
-            :let [[x2 y2] (mapv - (mapv + [xx yy] [x y]) [ox oy])
-                  tile (get @world [x2 y2])]
+            :let [x2 (- (+ xx x) ox)
+                  y2 (- (+ yy y) oy)
+                  tile (get world [x2 y2])]
             :when tile]
-      (do 
-        (cursor! c xx yy)
-        (write! c 
-          (:char tile))) ))
-    (cursor! c 1 (- h 1))
-    (write c (apply str (take w (repeat \-))))
-    (cursor! c 1 h)
-    (write c (apply str (take w (repeat " "))))
-    (write! c 
+      (write* c 
+        (esc/cursor xx yy)
+        (:char tile))))
+    (write* c 
+      (esc/cursor 1 (- h 1))
+      (apply str (take w (repeat \-)))
+      (esc/cursor 1 h)
+      (apply str (take w (repeat " ")))
+    
       (esc/cursor 1 h)
       "color <" (code (state c :color)) "#" (code :reset)
-      "> (pageup/down)    "
+      "> (pageup)    "
       "background <" (background (state c :background)) " " (code :reset)
-      "> (home/end)"
+      "> (pagedown)   quit (f1)"
       (esc/cursor (- w 10) h)
-      (code :green) "(" x " " y ")   " (code :reset)) ))
+      (code :green) "(" x " " y ")   " (code :reset))
+    (each-player 
+      (fn [o] 
+        (let [[x2 y2] (state o :pos)
+              [ox2 oy2] (screen-space c x2 y2)]
+          (if (within? c x2 y2)
+            (write* c
+              (code (state o :color))
+              (background (state o :background))
+              (esc/cursor ox2 oy2) "@"
+              (code :reset))))))
+    (flush* c)))
 
 (defn update-vision [x y]
-  (dorun (map
-    (fn [[c m]]
-      (let [[px py] (:pos m)
-            {:keys [w h]} (:window m)
-            [ox oy] (mapv int (mapv * [w h] [0.5 0.5]))]
-        (if (and (< (- px ox) x (+ px ox))
-                 (< (- py oy) y (+ py oy)))
-          (draw-world c))))
-   @players)))
+  (each-player (fn [c] (if (within? c x y) (draw-world c)))))
 
 (defn new-player [c]
+  (save-world)
   (swap! players assoc c {
     :pos [(rand-int 20)(rand-int 20)]
     :window {:w 10 :h 10}
@@ -79,6 +130,7 @@
   (write c esc/char-mode)
   (write c esc/no-echo)
   (write c esc/CLR)
+  (write c esc/hide-cursor)
   (draw-world c))
 
 
@@ -109,9 +161,8 @@
     (apply update-vision (state c :pos)))
   (cond 
     (= s :pageup)   (change-color c :color 1)
-    (= s :pagedown) (change-color c :color -1)
-    (= s :home)     (change-color c :background 1)
-    (= s :end)      (change-color c :background -1))
+    (= s :pagedown) (change-color c :background 1)
+    (= s :f1)       (close c))
   (when-not (keyword? s)
     (swap! world assoc (state c :pos) {
       :char (str (code (state c :color)) 
@@ -121,7 +172,8 @@
 
 (defn player-quit [c]
   (swap! players dissoc c)
-  (prn :disconnect c))
+  (prn :disconnect c)
+  (save-world))
 
 (defn player-resize [c m]
   (let [{:keys [w h]} m]
@@ -147,36 +199,3 @@
     :close    #'player-quit
     :shutdown #(prn :shutdown! %)
     :resize   #'player-resize}))
-
-
-
-
-
-
-'(swap! DEBUG not)
-
-;echo
-'(broad! esc/IAC esc/WONT esc/ECHO)
-;no echo
-'(broad! esc/IAC esc/WILL esc/ECHO)
-
-;enter char mode
-'(broad! esc/char-mode)
-
-;enter line mode
-'(broad! esc/line-mode)
-
-
-'(broad! esc/IAC esc/DONT esc/LINE)
-
-;not sure
-'(broad! ansi-esc ORIG )
-
-;request screen size reports
-'(broad! IAC DO NAWS)
-
-;clear screen
-'(broad! CLR)
-
-;hide cursor
-'(broad! CSI HIDE)
