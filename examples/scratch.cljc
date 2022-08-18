@@ -1,5 +1,5 @@
 (ns tenlet.scratch
-  (:require 
+  (:require
     [tenlet.server :refer [write close create-server DEBUG]]
     [tenlet.escape :as esc]))
 
@@ -28,14 +28,14 @@
 (defn player-resize [c m]
   (let [{:keys [w h]} m]
     (write c esc/CLR)
-    (dorun 
+    (dorun
       (for [x (range (inc w))
             y (range (inc h))
             :when (or (#{2 (dec w)} x) (#{2 (dec h)} y))]
-      (do 
+      (do
         (write c (esc/cursor x y))
-        (write c (str 
-          (esc/background (rand-nth (vec esc/color-names))) 
+        (write c (str
+          (esc/background (rand-nth (vec esc/color-names)))
           (esc/code (rand-nth (vec esc/color-names)))))
         (write c (char (+ 33 (rand-int 93)))))))
     (write c (esc/cursor (int (/ w 2)) (int (/ h 2))))
@@ -44,15 +44,15 @@
 (declare server)
 
 (defn shutdown! []
-  (write server (str  
+  (write server (str
     (esc/background :white) (esc/code :red)
     "\nSERVER SHUTTING DOWN\n"
     (esc/code :reset)))
   (close server))
 
-(if server (shutdown!))
+;; (if server (shutdown!))
 
-(def server 
+(def server
   (create-server 5071 {
     :connect  #'new-player
     :line     #'player-input
@@ -65,14 +65,14 @@
 
 
 
-(for [i (range 20)] 
-  (broad! 
-    (esc/background (rand-nth (vec esc/color-names))) 
+(for [i (range 20)]
+  (broad!
+    (esc/background (rand-nth (vec esc/color-names)))
     (esc/code (rand-nth (vec esc/color-names)))
     'selfsame (esc/code :reset)))
 
 '(for [i (range 20)]
-  (do 
+  (do
     (broad! (cursor i i))
     (broad! (code (rand-nth (vec color-names))))
     (broad! "@")))
