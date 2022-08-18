@@ -3,9 +3,8 @@
   :url "http://github.com/selfsame/tenlet"
   :license {:name "The MIT License (MIT)"
             :url "https://github.com/selfsame/pdfn/blob/master/LICENSE"}
-  :dependencies [
-    [org.clojure/clojure "1.8.0"]
-    [selfsame/pdfn "1.0.3"]]
+  ;; use deps from deps.edn
+  :plugins [[lein-tools-deps "0.4.5"]]
   :deploy-repositories [
     ["clojars" {
       :sign-releases false}]])
